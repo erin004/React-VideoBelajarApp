@@ -3,19 +3,24 @@ import Newsletter from "../components/newsletter";
 import Card from "../components/card";
 import Footer from "../components/footer";
 import headerImg from "../assets/header.jpg";
-import { courses as initialCourses } from "../data/courses";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { getCourses } from "../api"; // <-- ambil dari api.js
 
 const HomePage = () => {
-  const [courseList, setCourseList] = useState(initialCourses);
+  const [courseList, setCourseList] = useState([]);
 
-  // cek localStorage saat pertama kali render
+  // ambil data dari Firestore pas pertama kali render
   useEffect(() => {
-    const saved = localStorage.getItem("courses");
-    if (saved) {
-      setCourseList(JSON.parse(saved));
-    }
+    const fetchData = async () => {
+      try {
+        const data = await getCourses();
+        setCourseList(data);
+      } catch (err) {
+        console.error("Gagal ambil courses:", err);
+      }
+    };
+    fetchData();
   }, []);
 
   return (

@@ -1,89 +1,61 @@
+// src/pages/ManageCourses.jsx
 import { useState, useEffect } from "react";
-import { courses as initialCourses } from "../data/courses";
-import Card from "../components/card";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import { db } from "../firebase"; 
 import Navbar from "../components/navbar";
 import Footer from "../components/footer";
+import CourseCard from "../components/card";
 import { Link } from "react-router-dom";
 
-// helper untuk konversi file ke Base64
-const fileToBase64 = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = (err) => reject(err);
-  });
-
 const ManageCourses = () => {
-  const [courseList, setCourseList] = useState(() => {
-    const saved = localStorage.getItem("courses");
-    return saved ? JSON.parse(saved) : initialCourses;
-  });
-
+  const [courseList, setCourseList] = useState([]);
   const [formData, setFormData] = useState({
     title: "",
     desc: "",
     author: "",
     role: "",
     price: "",
-    image: null,
-    avatar: null,
+    image: "",
+    avatar: "",
   });
-
   const [editingId, setEditingId] = useState(null);
 
-  // simpan ke localStorage
+  // listen Firestore realtime
   useEffect(() => {
-    localStorage.setItem("courses", JSON.stringify(courseList));
-  }, [courseList]);
+    const unsub = onSnapshot(collection(db, "course"), (snapshot) => {
+      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setCourseList(data);
+    });
+    return () => unsub();
+  }, []);
 
   // HANDLE SUBMIT
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    let imageBase64 = formData.image;
-    let avatarBase64 = formData.avatar;
-
-    // kalau file object, convert ke base64
-    if (formData.image instanceof File) {
-      imageBase64 = await fileToBase64(formData.image);
-    }
-    if (formData.avatar instanceof File) {
-      avatarBase64 = await fileToBase64(formData.avatar);
-    }
-
     if (editingId) {
-      // UPDATE
-      setCourseList(
-        courseList.map((c) =>
-          c.id === editingId
-            ? {
-                ...c,
-                title: formData.title,
-                desc: formData.desc,
-                author: formData.author,
-                role: formData.role,
-                price: formData.price,
-                image: imageBase64 || c.image,
-                avatar: avatarBase64 || c.avatar,
-              }
-            : c
-        )
-      );
-      setEditingId(null);
-    } else {
-      // CREATE
-      const newCourse = {
-        id: Date.now(),
+      // UPDATE FIRESTORE
+      await updateDoc(doc(db, "course", editingId), {
         title: formData.title,
         desc: formData.desc,
         author: formData.author,
         role: formData.role,
         price: formData.price,
-        image: imageBase64 || "/assets/header.jpg",
-        avatar: avatarBase64 || "/assets/header.jpg",
-      };
-      setCourseList([...courseList, newCourse]);
+        image: formData.image,
+        avatar: formData.avatar,
+      });
+      setEditingId(null);
+    } else {
+      // CREATE FIRESTORE
+      await addDoc(collection(db, "course"), {
+        title: formData.title,
+        desc: formData.desc,
+        author: formData.author,
+        role: formData.role,
+        price: formData.price,
+        image: formData.image,
+        avatar: formData.avatar,
+      });
     }
 
     // reset form
@@ -93,14 +65,14 @@ const ManageCourses = () => {
       author: "",
       role: "",
       price: "",
-      image: null,
-      avatar: null,
+      image: "",
+      avatar: "",
     });
   };
 
   // DELETE
-  const deleteCourse = (id) => {
-    setCourseList(courseList.filter((c) => c.id !== id));
+  const deleteCourse = async (id) => {
+    await deleteDoc(doc(db, "course", id));
     if (editingId === id) {
       setEditingId(null);
       setFormData({
@@ -109,13 +81,13 @@ const ManageCourses = () => {
         author: "",
         role: "",
         price: "",
-        image: null,
-        avatar: null,
+        image: "",
+        avatar: "",
       });
     }
   };
 
-  // EDIT 
+  // EDIT
   const editCourse = (course) => {
     setEditingId(course.id);
     setFormData({
@@ -127,7 +99,7 @@ const ManageCourses = () => {
       image: course.image,
       avatar: course.avatar,
     });
-    window.scrollTo({ top: 0, behavior: "smooth" }); // biar form kelihatan
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -199,7 +171,7 @@ const ManageCourses = () => {
             />
             <input
               type="text"
-              placeholder="Harga (contoh: Rp 200K)"
+              placeholder="Harga (contoh: 200K)"
               value={formData.price}
               onChange={(e) =>
                 setFormData({ ...formData, price: e.target.value })
@@ -207,68 +179,34 @@ const ManageCourses = () => {
               className="border p-2 rounded"
               required
             />
-
-            {/* Upload Image */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Image Content
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) =>
-                  setFormData({ ...formData, image: e.target.files[0] })
-                }
-                className="border p-2 rounded w-full"
-              />
-              {formData.image && typeof formData.image === "string" ? (
-                <img
-                  src={formData.image}
-                  alt="Preview"
-                  className="mt-2 w-32 h-20 object-cover rounded"
-                />
-              ) : formData.image ? (
-                <img
-                  src={URL.createObjectURL(formData.image)}
-                  alt="Preview"
-                  className="mt-2 w-32 h-20 object-cover rounded"
-                />
-              ) : null}
-            </div>
-
-            {/* Upload Avatar */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Avatar Author
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) =>
-                  setFormData({ ...formData, avatar: e.target.files[0] })
-                }
-                className="border p-2 rounded w-full"
-              />
-              {formData.avatar && typeof formData.avatar === "string" ? (
-                <img
-                  src={formData.avatar}
-                  alt="Preview"
-                  className="mt-2 w-16 h-16 object-cover rounded-full"
-                />
-              ) : formData.avatar ? (
-                <img
-                  src={URL.createObjectURL(formData.avatar)}
-                  alt="Preview"
-                  className="mt-2 w-16 h-16 object-cover rounded-full"
-                />
-              ) : null}
-            </div>
+            <input
+              type="url"
+              placeholder="Link Image Content"
+              value={formData.image}
+              onChange={(e) =>
+                setFormData({ ...formData, image: e.target.value })
+              }
+              className="border p-2 rounded"
+              required
+            />
+            <input
+              type="url"
+              placeholder="Link Avatar Author"
+              value={formData.avatar}
+              onChange={(e) =>
+                setFormData({ ...formData, avatar: e.target.value })
+              }
+              className="border p-2 rounded"
+              required
+            />
 
             <div className="sm:col-span-2">
               <button
                 type="submit"
                 className={`${
-                  editingId ? "bg-yellow-500 hover:bg-yellow-600" : "bg-green-500 hover:bg-green-600"
+                  editingId
+                    ? "bg-yellow-500 hover:bg-yellow-600"
+                    : "bg-green-500 hover:bg-green-600"
                 } text-white px-4 py-2 rounded`}
               >
                 {editingId ? "Update Course" : "Tambah Course"}
@@ -283,7 +221,7 @@ const ManageCourses = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {courseList.map((course) => (
               <div key={course.id} className="relative">
-                <Card {...course} />
+                <CourseCard {...course} /> {/* penting: spread props */}
                 <div className="flex gap-2 mt-2">
                   <button
                     onClick={() => editCourse(course)}
