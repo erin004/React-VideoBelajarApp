@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HomePage from "./pages/homePage";
 import LoginPage from "./pages/loginPage";
 import RegisterPage from "./pages/registerPage";
-import ManageCourses from "./pages/ManageCourses";
+import ManageCourses from "./pages/manageCourses"; // ✅ huruf kecil semua
 
 function App() {
   return (
@@ -17,4 +17,4 @@ function App() {
   );
 }
 
-export default App
+export default App;

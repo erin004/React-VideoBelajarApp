@@ -3,7 +3,7 @@ import axios from "axios";
 const PROJECT_ID = "videobelajar-4bca5";
 const BASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/course`;
 
-// helper convert field
+// 🔧 Helper: ambil value dari setiap field Firestore
 function getField(field) {
   if (!field) return null;
   if (field.stringValue !== undefined) return field.stringValue;
@@ -13,7 +13,7 @@ function getField(field) {
   return null;
 }
 
-// GET all
+// ✅ GET ALL — ambil semua course dari Firestore
 export async function getCourses() {
   const res = await axios.get(BASE_URL);
   if (!res.data.documents) return [];
@@ -29,8 +29,8 @@ export async function getCourses() {
   }));
 }
 
-// CREATE
-export async function createCourse(course) {
+// ✅ CREATE — tambah course baru
+export async function addCourseAPI(course) {
   const res = await axios.post(BASE_URL, {
     fields: {
       title: { stringValue: course.title },
@@ -42,12 +42,15 @@ export async function createCourse(course) {
       avatar: { stringValue: course.avatar || "/assets/header.jpg" },
     },
   });
-  return res.data;
+
+  // ambil ID dari Firestore response
+  const id = res.data.name.split("/").pop();
+  return { id, ...course };
 }
 
-// UPDATE
-export async function updateCourse(id, course) {
-  const res = await axios.patch(`${BASE_URL}/${id}`, {
+// ✅ UPDATE — edit course berdasarkan ID
+export async function editCourseAPI(id, course) {
+  await axios.patch(`${BASE_URL}/${id}`, {
     fields: {
       title: { stringValue: course.title },
       desc: { stringValue: course.desc },
@@ -58,11 +61,13 @@ export async function updateCourse(id, course) {
       avatar: { stringValue: course.avatar || "/assets/header.jpg" },
     },
   });
-  return res.data;
+
+  // return data yang udah diupdate biar langsung ke Redux
+  return { id, ...course };
 }
 
-// DELETE
+// ✅ DELETE — hapus course berdasarkan ID
 export async function deleteCourseAPI(id) {
-  const res = await axios.delete(`${BASE_URL}/${id}`);
-  return res.data;
+  await axios.delete(`${BASE_URL}/${id}`);
+  return id;
 }

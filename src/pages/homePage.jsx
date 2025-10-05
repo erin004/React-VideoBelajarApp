@@ -4,30 +4,23 @@ import Card from "../components/card";
 import Footer from "../components/footer";
 import headerImg from "../assets/header.jpg";
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { getCourses } from "../api"; // <-- ambil dari api.js
+import { useEffect } from "react";import useCourses from "../store/redux/useCourses"; // custom hook buat redux + api
 
 const HomePage = () => {
-  const [courseList, setCourseList] = useState([]);
+  const { courseList, status, error, reload } = useCourses(); // ambil dari redux
 
-  // ambil data dari Firestore pas pertama kali render
+  // ambil data API cuma sekali saat render pertama
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await getCourses();
-        setCourseList(data);
-      } catch (err) {
-        console.error("Gagal ambil courses:", err);
-      }
-    };
-    fetchData();
-  }, []);
+    if (status === "idle") {
+      reload(); // dispatch fetchCourses()
+    }
+  }, [status, reload]);
 
   return (
     <div className="bg-[#FEFDF6]">
       <Navbar />
 
-      {/* Hero */}
+      {/* Hero Section */}
       <section className="mt-10 px-4 sm:px-6">
         <div className="w-full max-w-[1200px] mx-auto relative rounded-[10px] overflow-hidden h-[400px]">
           <img
@@ -36,6 +29,7 @@ const HomePage = () => {
             className="absolute inset-0 w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-[rgba(0,0,0,0.8)]"></div>
+
           <div className="relative z-10 w-full px-6 md:px-[150px] py-10 flex flex-col items-center text-center h-full justify-center">
             <h2 className="text-white text-[24px] sm:text-[32px] md:text-[40px] lg:text-[48px] font-bold leading-tight font-secondary">
               Revolusi Pembelajaran: <br className="hidden sm:block" />
@@ -72,7 +66,7 @@ const HomePage = () => {
             Add Course
           </Link>
 
-          {/* Tabs / Filter Button */}
+          {/* Tabs / Filter */}
           <div className="flex flex-wrap gap-4 sm:gap-12 text-[14px] sm:text-[16px] font-medium text-gray-500 font-primary mt-6">
             <button className="pb-2 border-b-4 border-[#F64920] text-[#F64920]">
               Semua Kelas
@@ -88,6 +82,22 @@ const HomePage = () => {
       {/* Cards */}
       <section className="mt-8 px-4 sm:px-6">
         <div className="w-full max-w-[1200px] mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          {status === "loading" && (
+            <p className="col-span-full text-center text-gray-500">
+              Loading courses...
+            </p>
+          )}
+          {status === "failed" && (
+            <p className="col-span-full text-center text-red-600">
+              Gagal memuat data: {error}
+            </p>
+          )}
+          {status === "succeeded" && courseList.length === 0 && (
+            <p className="col-span-full text-center text-gray-400">
+              Belum ada course tersedia.
+            </p>
+          )}
+
           {courseList.map((course) => (
             <Card key={course.id} {...course} />
           ))}
